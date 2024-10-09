@@ -1,4 +1,5 @@
 const express = require("express");
+const bcrypt = require("bcrypt");
 const { UserModel, TodoModel } = require("./db");
 const jwt = require("jsonwebtoken");
 const { auth, JWT_SECRET } = require("./auth");
@@ -25,10 +26,12 @@ app.post("/signup", async (req, res) => {
             })
         }
 
+        const hashedPassword = await bcrypt.hash(password , 10)
+
         await UserModel.create({
             name: name,
             email: email,
-            password: password
+            password: hashedPassword
         })
         res.status(201).json({
             message: "You have successfully SignedUp"
@@ -53,7 +56,8 @@ app.post("/signin", async (req, res) => {
                 message: "User does not exists"
             })
         }
-        if (existingUser.password !== password) {
+        const matchedPassword = await bcrypt.compare(password , existingUser.password )
+        if (!matchedPassword) {
             return res.status(403).json({
                 message: "Incorrect password"
             });
