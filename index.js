@@ -1,5 +1,6 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
+const {z} = require("zod");
 const { UserModel, TodoModel } = require("./db");
 const jwt = require("jsonwebtoken");
 const { auth, JWT_SECRET } = require("./auth");
@@ -8,14 +9,37 @@ const mongoose = require("mongoose");
 
 app.use(express.json());
 
-mongoose.connect("mongodb+srv://Ujwal:Ujwal2510@merncluster.5dodjsu.mongodb.net/Ujwal-Todo-App")
+mongoose.connect("mongodb+srv://Ujwal:Ujwal2510@merncluster.5dodjsu.mongodb.net/Ujwal-Todo-App");
 
+const signupSchema = z.object({
+   name : z.string().min(5), 
+   email : z.string().email(),
+   password : z.string().min(8),
+})
+
+const signinSchema = z.object({
+    email : z.string().email(),
+    password : z.string().min(8),
+})
+
+const todoSchema = z.object({
+    title : z.string(),
+    done : z.boolean()
+})
 
 
 app.post("/signup", async (req, res) => {
     const name = req.body.name;
     const email = req.body.email;
     const password = req.body.password;
+
+    const validateSchema = signupSchema.safeParse({name , email , password});
+    if (!validateSchema.success) {
+        return res.status(400).json({
+            message: "Validation failed",
+            errors: validateSchema.error
+        });
+    }
 
     try {
         const existingUser = await UserModel.findOne({ email });
@@ -47,6 +71,14 @@ app.post("/signup", async (req, res) => {
 app.post("/signin", async (req, res) => {
     const email = req.body.email;
     const password = req.body.password;
+
+    const validateSchema = signinSchema.safeParse({email , password});
+    if (!validateSchema.success) {
+        return res.status(400).json({
+            message: "Validation failed",
+            errors: validateSchema.error.errors
+        });
+    }
 
     try {
         const existingUser = await UserModel.findOne({ email });
@@ -81,6 +113,14 @@ app.post("/todo", auth, async (req, res) => {
     const userId = req.userId;
     const title = req.body.title;
     const done = req.body.done;
+
+    const validateSchema = todoSchema.safeParse({title , done});
+    if (!validateSchema.success) {
+        return res.status(400).json({
+            message: "Validation failed",
+            errors: validateSchema.error.errors
+        });
+    }
 
     try {
         await TodoModel.create({
